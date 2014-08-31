@@ -20,10 +20,11 @@ static const char *tags[] = { "一", "二", "三", "四", "五", "六", "七", "
 
 static const Rule rules[] = {
 	/* class      instance    title       tags mask     isfloating   monitor */
-	{ "Gimp",     NULL,       NULL,       1 << 6,       False,       -1 },
+	{ "Gimp",     NULL,       NULL,       1 << 5,       False,       -1 },
 	{ "Firefox",  NULL,       NULL,       1 << 1,       False,       -1 },
 	{ "feh",      NULL,       NULL,       0,            True,        -1 },
 	{ "MPlayer",  NULL,       NULL,       0,            True,        -1 },
+	{ "mplayer2", NULL,       NULL,       0,            True,        -1 },
 };
 
 /* layout(s) */
