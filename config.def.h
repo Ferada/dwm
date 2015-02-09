@@ -76,6 +76,9 @@ static const char *smallraisevolumecmd[] = {"amixer", "set", "Master", "1%+", NU
 static const char *lowervolumecmd[]      = {"amixer", "set", "Master", "5%-", NULL};
 static const char *smalllowervolumecmd[] = {"amixer", "set", "Master", "1%-", NULL};
 static const char *mutecmd[]             = {"amixer", "set", "Master", "toggle", NULL};
+static const char *switchselectionscmd[] = {"xsel", "-x", NULL};
+static const char *switchclipboardcmd[]  = {"sh", "-c", "PRIMARY=`xsel -op`; xsel -ob | xsel -ip; echo \"$PRIMARY\" | xsel -ib", NULL};
+static const char *clearselectionscmd[]  = {"sh", "-c", "xsel -cp; xsel -cb; xsel -cs", NULL};
 
 static Key keys[] = {
 	/* modifier                     key        function        argument */
@@ -116,12 +119,15 @@ static Key keys[] = {
 	TAGKEYS(                        XK_8,                      7)
 	TAGKEYS(                        XK_9,                      8)
 	{MODKEY|ControlMask|ShiftMask,  XK_q,      exec,           {.v = dwmcmd}},
-	{MODKEY|ShiftMask,              XK_q,      quit,           {0}},
+	{MODKEY|ControlMask|ShiftMask|Mod1Mask,              XK_q,      quit,           {0}},
 	{0,               XF86XK_AudioRaiseVolume, spawn,          {.v = raisevolumecmd}},
 	{ShiftMask,       XF86XK_AudioRaiseVolume, spawn,          {.v = smallraisevolumecmd}},
 	{0,               XF86XK_AudioLowerVolume, spawn,          {.v = lowervolumecmd}},
 	{ShiftMask,       XF86XK_AudioLowerVolume, spawn,          {.v = smalllowervolumecmd}},
 	{0,                      XF86XK_AudioMute, spawn,          {.v = mutecmd}},
+	{ MODKEY,                       XK_z,      spawn,          {.v = switchclipboardcmd}},
+	{ MODKEY|ControlMask,           XK_z,      spawn,          {.v = switchselectionscmd}},
+	{ MODKEY|ShiftMask,             XK_z,      spawn,          {.v = clearselectionscmd}},
 };
 
 /* button definitions */
