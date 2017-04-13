@@ -77,7 +77,7 @@ static const char *nextcmd[]             = {"mpc", "next", NULL};
 static const char *switchselectionscmd[] = {"xsel", "-x", NULL};
 static const char *switchclipboardcmd[]  = {"sh", "-c", "PRIMARY=`xsel -op`; xsel -ob | xsel -ip; echo \"$PRIMARY\" | xsel -ib", NULL};
 static const char *clearselectionscmd[]  = {"sh", "-c", "xsel -cp; xsel -cb; xsel -cs", NULL};
-static const char *lockscreencmd[]       = {"slock", NULL};
+static const char *lockscreencmd[]       = {"sh", "-c", "slock slack away; slack auto", NULL};
 
 static Key keys[] = {
 	/* modifier                     key        function        argument */
