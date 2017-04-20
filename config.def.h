@@ -24,6 +24,7 @@ static const Rule rules[] = {
 	{ "feh",      NULL,       NULL,       0,            1,           -1 },
 	{ "MPlayer",  NULL,       NULL,       0,            1,           -1 },
 	{ "mplayer2", NULL,       NULL,       0,            1,           -1 },
+	{ "mpv",      NULL,       NULL,       0,            1,           -1 },
 };
 
 /* layout(s) */
@@ -63,7 +64,7 @@ exec(const Arg *arg) {
 /* commands */
 static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
 static const char *dmenucmd[]            = {"dmenu_run", "-b", "-m", dmenumon, NULL};
-static const char *termcmd[]             = {"urxvt", NULL};
+static const char *termcmd[]             = {"st", NULL};
 static const char *dwmcmd[]              = {"dwm", NULL};
 static const char *raisevolumecmd[]      = {"amixer", "set", "Master", "5%+", NULL};
 static const char *smallraisevolumecmd[] = {"amixer", "set", "Master", "1%+", NULL};
