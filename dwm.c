@@ -40,6 +40,7 @@
 #include <X11/extensions/Xinerama.h>
 #endif /* XINERAMA */
 #include <X11/Xft/Xft.h>
+#include <alsa/asoundlib.h>
 
 #include "drw.h"
 #include "util.h"
@@ -147,6 +148,8 @@ typedef struct {
 } Rule;
 
 /* function declarations */
+static void alsaset(const Arg *arg);
+static void alsasetup();
 static void applyrules(Client *c);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void arrange(Monitor *m);
@@ -280,6 +283,9 @@ static Drw *drw;
 static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
+static snd_mixer_t *alsa_handle;
+static snd_mixer_elem_t* alsa_elem;
+
 /* configuration, allows nested code to access above variables */
 #include "config.h"
 
@@ -296,6 +302,51 @@ struct Pertag {
 struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
 
 /* function implementations */
+void
+alsaset(const Arg *arg)
+{
+	if (!arg->i) {
+		if (snd_mixer_selem_has_playback_switch(alsa_elem)) {
+			int returned;
+			snd_mixer_selem_get_playback_switch(alsa_elem, SND_MIXER_SCHN_UNKNOWN, &returned);
+			snd_mixer_selem_set_playback_switch_all(alsa_elem, returned ? 0 : 1);
+		}
+	} else {
+		long min, max;
+		snd_mixer_selem_get_playback_volume_range(alsa_elem, &min, &max);
+
+		for (snd_mixer_selem_channel_id_t channel = 0; channel <= SND_MIXER_SCHN_LAST; channel++) {
+			if (snd_mixer_selem_has_playback_channel(alsa_elem, channel)) {
+				long volume;
+				snd_mixer_selem_get_playback_volume(alsa_elem, channel, &volume);
+				snd_mixer_selem_set_playback_volume_all(alsa_elem, MAX(MIN(volume + (arg->i) * (max - min) * 0.01, max), min));
+			}
+		}
+	}
+}
+
+void
+alsasetup()
+{
+	snd_mixer_open(&alsa_handle, 0);
+	snd_mixer_attach(alsa_handle, alsa_card);
+	snd_mixer_selem_register(alsa_handle, NULL, NULL);
+	snd_mixer_load(alsa_handle);
+
+	snd_mixer_selem_id_t *sid;
+	snd_mixer_selem_id_alloca(&sid);
+	snd_mixer_selem_id_set_index(sid, 0);
+	snd_mixer_selem_id_set_name(sid, alsa_selem_name);
+
+	alsa_elem = snd_mixer_find_selem(alsa_handle, sid);
+}
+
+void
+alsacleanup()
+{
+	snd_mixer_close(alsa_handle);
+}
+
 void
 applyrules(Client *c)
 {
@@ -512,6 +563,7 @@ cleanup(void)
 	XSync(dpy, False);
 	XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
 	XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
+	alsacleanup();
 }
 
 void
@@ -1688,6 +1740,7 @@ setup(void)
 	XSelectInput(dpy, root, wa.event_mask);
 	grabkeys();
 	focus(NULL);
+	alsasetup();
 }
 void
 setviewport(void){

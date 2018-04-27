@@ -13,6 +13,8 @@ static const char *colors[][3]      = {
 	[SchemeNorm] = { "#bbbbbb", "#111111", "#333333" },
 	[SchemeSel]  = { "#eeeeee", "#222222", "#222222" },
 };
+static const char *alsa_card        = "default";
+static const char *alsa_selem_name  = "Master";
 
 /* tagging */
 static const char *tags[] = { "一", "二", "三", "四", "五", "六", "七", "八", "九" };
@@ -71,11 +73,6 @@ static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() 
 static const char *dmenucmd[]            = {"dmenu_run", "-b", "-m", dmenumon, NULL};
 static const char *termcmd[]             = {"st", NULL};
 static const char *dwmcmd[]              = {"dwm", NULL};
-static const char *raisevolumecmd[]      = {"amixer", "set", "Master", "5%+", NULL};
-static const char *smallraisevolumecmd[] = {"amixer", "set", "Master", "1%+", NULL};
-static const char *lowervolumecmd[]      = {"amixer", "set", "Master", "5%-", NULL};
-static const char *smalllowervolumecmd[] = {"amixer", "set", "Master", "1%-", NULL};
-static const char *mutecmd[]             = {"amixer", "set", "Master", "toggle", NULL};
 static const char *pausecmd[]            = {"mpc", "toggle", NULL};
 static const char *stopcmd[]             = {"mpc", "stop", NULL};
 static const char *prevcmd[]             = {"mpc", "prev", NULL};
@@ -125,11 +122,11 @@ static Key keys[] = {
 	TAGKEYS(                        XK_9,                      8)
 	{MODKEY|ControlMask|ShiftMask,  XK_q,      exec,           {.v = dwmcmd}},
 	{MODKEY|ControlMask|Mod1Mask,   XK_q,      quit,           {0}},
-	{0,               XF86XK_AudioRaiseVolume, spawn,          {.v = raisevolumecmd}},
-	{ShiftMask,       XF86XK_AudioRaiseVolume, spawn,          {.v = smallraisevolumecmd}},
-	{0,               XF86XK_AudioLowerVolume, spawn,          {.v = lowervolumecmd}},
-	{ShiftMask,       XF86XK_AudioLowerVolume, spawn,          {.v = smalllowervolumecmd}},
-	{0,                      XF86XK_AudioMute, spawn,          {.v = mutecmd}},
+	{0,               XF86XK_AudioRaiseVolume, alsaset,        {.i = 5}},
+	{ShiftMask,       XF86XK_AudioRaiseVolume, alsaset,        {.i = 1}},
+	{0,               XF86XK_AudioLowerVolume, alsaset,        {.i = -5}},
+	{ShiftMask,       XF86XK_AudioLowerVolume, alsaset,        {.i = -1}},
+	{0,                      XF86XK_AudioMute, alsaset,        {.i = 0}},
 	{0,                      XF86XK_AudioPlay, spawn,          {.v = pausecmd}},
 	{0,                      XF86XK_AudioStop, spawn,          {.v = stopcmd}},
 	{0,                      XF86XK_AudioPrev, spawn,          {.v = prevcmd}},
