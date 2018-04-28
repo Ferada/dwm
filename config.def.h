@@ -72,7 +72,6 @@ exec(const Arg *arg) {
 static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
 static const char *dmenucmd[]            = {"dmenu_run", "-b", "-m", dmenumon, NULL};
 static const char *termcmd[]             = {"st", NULL};
-static const char *dwmcmd[]              = {"dwm", NULL};
 static const char *pausecmd[]            = {"mpc", "toggle", NULL};
 static const char *stopcmd[]             = {"mpc", "stop", NULL};
 static const char *prevcmd[]             = {"mpc", "prev", NULL};
@@ -120,7 +119,7 @@ static Key keys[] = {
 	TAGKEYS(                        XK_7,                      6)
 	TAGKEYS(                        XK_8,                      7)
 	TAGKEYS(                        XK_9,                      8)
-	{MODKEY|ControlMask|ShiftMask,  XK_q,      exec,           {.v = dwmcmd}},
+	{MODKEY|ControlMask|ShiftMask,  XK_q,      restart,        {0}},
 	{MODKEY|ControlMask|Mod1Mask,   XK_q,      quit,           {0}},
 	{0,               XF86XK_AudioRaiseVolume, alsaset,        {.i = 5}},
 	{ShiftMask,       XF86XK_AudioRaiseVolume, alsaset,        {.i = 1}},

@@ -201,6 +201,7 @@ static void resize(Client *c, int x, int y, int w, int h, int interact);
 static void resizeclient(Client *c, int x, int y, int w, int h);
 static void resizemouse(const Arg *arg);
 static void restack(Monitor *m);
+static void restart(const Arg *arg);
 static void rotatelayoutaxis(const Arg *arg);
 static void run(void);
 static void scan(void);
@@ -285,6 +286,8 @@ static Window root, wmcheckwin;
 
 static snd_mixer_t *alsa_handle;
 static snd_mixer_elem_t* alsa_elem;
+
+static char **global_argv = NULL;
 
 /* configuration, allows nested code to access above variables */
 #include "config.h"
@@ -1357,6 +1360,17 @@ quit(const Arg *arg)
 	running = 0;
 }
 
+void
+restart(const Arg *arg) {
+	if (global_argv != NULL) {
+		if(dpy)
+			close(ConnectionNumber(dpy));
+		setsid();
+		execvp(global_argv[0], global_argv);
+		exit(EXIT_SUCCESS);
+	}
+}
+
 Monitor *
 recttomon(int x, int y, int w, int h)
 {
@@ -1673,6 +1687,17 @@ setup(void)
 
 	/* clean up any zombies immediately */
 	sigchld(0);
+
+	/* Setup signal handlers */
+	struct sigaction act = {0};
+	act.sa_handler = (void (*)(int)) &quit;
+	if (sigaction(SIGHUP, &act, NULL) < 0) {
+		die("couldn't set up SIGHUP handler");
+	}
+	act.sa_handler = (void (*)(int)) &restart;
+	if (sigaction(SIGUSR1, &act, NULL) < 0) {
+		die("couldn't set up SIGUSR1 handler");
+	}
 
 	/* init screen */
 	screen = DefaultScreen(dpy);
@@ -2395,6 +2420,7 @@ main(int argc, char *argv[])
 		fputs("warning: no locale support\n", stderr);
 	if (!(dpy = XOpenDisplay(NULL)))
 		die("dwm: cannot open display");
+	global_argv = argv;
 	checkotherwm();
 	setup();
 	scan();
