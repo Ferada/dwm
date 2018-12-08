@@ -41,6 +41,9 @@
 #endif /* XINERAMA */
 #include <X11/Xft/Xft.h>
 #include <alsa/asoundlib.h>
+#include <poll.h>
+#include <time.h>
+#include <sys/timerfd.h>
 
 #include "drw.h"
 #include "util.h"
@@ -149,7 +152,7 @@ typedef struct {
 
 /* function declarations */
 static void alsaset(const Arg *arg);
-static void alsasetup();
+static void alsasetup(void);
 static void applyrules(Client *c);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void arrange(Monitor *m);
@@ -286,6 +289,7 @@ static Window root, wmcheckwin;
 
 static snd_mixer_t *alsa_handle;
 static snd_mixer_elem_t* alsa_elem;
+static int tfd;
 
 static char **global_argv = NULL;
 
@@ -308,6 +312,8 @@ struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
 void
 alsaset(const Arg *arg)
 {
+  // fprintf(stderr, "alsa elem %p\n", alsa_elem);
+
 	if (!arg->i) {
 		if (snd_mixer_selem_has_playback_switch(alsa_elem)) {
 			int returned;
@@ -326,14 +332,68 @@ alsaset(const Arg *arg)
 			}
 		}
 	}
+
+        updatestatus();
+}
+
+int
+elem_callback(snd_mixer_elem_t *elem, unsigned int mask)
+{
+  // fprintf(stderr, "elem callback %p %x\n", elem, mask);
+
+	if (mask == SND_CTL_EVENT_MASK_REMOVE) {
+          // controls_changed = TRUE;
+	} else {
+          if (mask & SND_CTL_EVENT_MASK_VALUE) {
+                  // control_values_changed = TRUE;
+
+            // fprintf(stderr, "%p\n", alsa_elem);
+            if (alsa_elem != NULL) {
+		long min, max;
+		snd_mixer_selem_get_playback_volume_range(alsa_elem, &min, &max);
+
+		for (snd_mixer_selem_channel_id_t channel = 0; channel <= SND_MIXER_SCHN_LAST; channel++) {
+			if (snd_mixer_selem_has_playback_channel(alsa_elem, channel)) {
+				long volume;
+				snd_mixer_selem_get_playback_volume(alsa_elem, channel, &volume);
+                                // fprintf(stderr, "%ld\n", volume);
+			}
+		}
+          }
+          }
+
+          if (mask & SND_CTL_EVENT_MASK_INFO) {
+                  // controls_changed = TRUE;
+          }
+	}
+
+        updatestatus();
+
+	return 0;
+}
+
+static int mixer_callback(snd_mixer_t *mixer, unsigned int mask, snd_mixer_elem_t *elem)
+{
+  // fprintf(stderr, "mixer callback %p %x\n", elem, mask);
+
+	if (mask & SND_CTL_EVENT_MASK_ADD) {
+          // controls_changed = TRUE;
+		snd_mixer_elem_set_callback(elem, elem_callback);
+	}
+
+        updatestatus();
+
+	return 0;
 }
 
 void
-alsasetup()
+alsasetup(void)
 {
 	snd_mixer_open(&alsa_handle, 0);
 	snd_mixer_attach(alsa_handle, alsa_card);
 	snd_mixer_selem_register(alsa_handle, NULL, NULL);
+
+	snd_mixer_set_callback(alsa_handle, mixer_callback);
 	snd_mixer_load(alsa_handle);
 
 	snd_mixer_selem_id_t *sid;
@@ -342,12 +402,7 @@ alsasetup()
 	snd_mixer_selem_id_set_name(sid, alsa_selem_name);
 
 	alsa_elem = snd_mixer_find_selem(alsa_handle, sid);
-}
-
-void
-alsacleanup()
-{
-	snd_mixer_close(alsa_handle);
+	snd_mixer_elem_set_callback(alsa_elem, elem_callback);
 }
 
 void
@@ -566,7 +621,8 @@ cleanup(void)
 	XSync(dpy, False);
 	XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
 	XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
-	alsacleanup();
+	snd_mixer_close(alsa_handle);
+	close(tfd);
 }
 
 void
@@ -1511,19 +1567,70 @@ setcurrentdesktop(void){
 }
 void setdesktopnames(void){
 	XTextProperty text;
-	Xutf8TextListToTextProperty(dpy, tags, TAGSLENGTH, XUTF8StringStyle, &text);
+	Xutf8TextListToTextProperty(dpy, (char**) tags, TAGSLENGTH, XUTF8StringStyle, &text);
 	XSetTextProperty(dpy, root, &text, netatom[NetDesktopNames]);
 }
 
 void
 run(void)
 {
-	XEvent ev;
+	struct pollfd *fds = NULL;
+	int nfds = 0;
+
 	/* main event loop */
 	XSync(dpy, False);
-	while (running && !XNextEvent(dpy, &ev))
-		if (handler[ev.type])
-			handler[ev.type](&ev); /* call handler */
+
+	while (running) {
+          int n = 2 + snd_mixer_poll_descriptors_count(alsa_handle);
+          if (n != nfds) {
+            free(fds);
+            nfds = n;
+            fds = ecalloc(nfds, sizeof(*fds));
+            fds[0].fd = ConnectionNumber(dpy);
+            fds[0].events = POLLIN;
+            fds[1].fd = tfd;
+            fds[1].events = POLLIN;
+          }
+          snd_mixer_poll_descriptors(alsa_handle, &fds[2], nfds - 2);
+
+          n = poll(fds, nfds, -1);
+          // fprintf(stderr, "n %d\n", n);
+          if (n == -1) {
+            if (errno != EINTR) {
+
+            }
+          } else if (n == 0) {
+
+          } else {
+            if (fds[0].revents & POLLIN) {
+              XEvent ev;
+              --n;
+              fds[0].revents = 0;
+              while (running && XPending(dpy) && !XNextEvent(dpy, &ev))
+                if (handler[ev.type])
+                  handler[ev.type](&ev);
+            }
+            if (fds[1].revents & POLLIN) {
+              --n;
+              // fprintf(stderr, "got a POLLIN for the timer\n");
+              unsigned long happened;
+              read(tfd, &happened, sizeof(happened));
+              updatestatus();
+            }
+            if (n > 0) {
+              // fprintf(stderr, "alsa n %d\n", n);
+              unsigned short revents;
+              snd_mixer_poll_descriptors_revents(alsa_handle, &fds[2], nfds - 1, &revents);
+              if (revents & (POLLERR | POLLNVAL)) {
+                snd_mixer_detach(alsa_handle, alsa_card);
+              } else if (revents & POLLIN) {
+                // fprintf(stderr, "alsa handle events\n");
+                snd_mixer_handle_events(alsa_handle);
+              }
+            }
+          }
+        }
+        free(fds);
 }
 
 void
@@ -1739,6 +1846,9 @@ setup(void)
 		scheme[i] = drw_scm_create(drw, colors[i], 3);
 	/* init bars */
 	updatebars();
+
+	alsasetup();
+
 	updatestatus();
 	/* supporting window for NetWMCheck */
 	wmcheckwin = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 0, 0, 0);
@@ -1765,7 +1875,12 @@ setup(void)
 	XSelectInput(dpy, root, wa.event_mask);
 	grabkeys();
 	focus(NULL);
-	alsasetup();
+
+	tfd = timerfd_create(CLOCK_REALTIME, TFD_CLOEXEC);
+	struct itimerspec new_value = {0};
+	new_value.it_value.tv_sec = 60;
+	new_value.it_interval.tv_sec = 60;
+	timerfd_settime(tfd, 0, &new_value, NULL);
 }
 void
 setviewport(void){
@@ -2261,8 +2376,31 @@ updatetitle(Client *c)
 void
 updatestatus(void)
 {
-	if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext)))
-		strcpy(stext, "dwm-"VERSION);
+	gettextprop(root, XA_WM_NAME, stext, 200);
+	int l = strlen(stext);
+
+  if (alsa_elem != NULL) {
+        long min, max;
+        snd_mixer_selem_get_playback_volume_range(alsa_elem, &min, &max);
+
+			  int returned = 0;
+		if (snd_mixer_selem_has_playback_switch(alsa_elem)) {
+			snd_mixer_selem_get_playback_switch(alsa_elem, SND_MIXER_SCHN_UNKNOWN, &returned);
+		}
+
+        for (snd_mixer_selem_channel_id_t channel = 0; channel <= SND_MIXER_SCHN_LAST; channel++) {
+          if (snd_mixer_selem_has_playback_channel(alsa_elem, channel)) {
+            long volume;
+            snd_mixer_selem_get_playback_volume(alsa_elem, channel, &volume);
+            l += sprintf(stext + l, "%c%3d%% ", !returned ? '!' : ' ', (int)(((float) volume) / (max - min) / 0.01));
+            break;
+          }
+        }
+  }
+
+	time_t now = time(0);
+	strftime(stext + l, sizeof(stext) - l, "%a %b %d %H:%M", localtime(&now));
+
 	drawbar(selmon);
 }
 
