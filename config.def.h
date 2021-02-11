@@ -84,6 +84,8 @@ static const char *nextcmd[]             = {"mpc", "next", NULL};
 static const char *clipmenucmd[]         = {"clipmenu", NULL};
 static const char *actprimarycmd[]       = {"act", "-s", "primary", NULL};
 static const char *actclipboardcmd[]     = {"act", "-s", "clipboard", NULL};
+static const char *altactprimarycmd[]    = {"act", "-a", "-s", "primary", NULL};
+static const char *altactclipboardcmd[]  = {"act", "-a", "-s", "clipboard", NULL};
 static const char *switchselectionscmd[] = {"xsel", "-x", NULL};
 static const char *switchclipboardcmd[]  = {"sh", "-c", "PRIMARY=`xsel -op`; xsel -ob | xsel -ip; echo \"$PRIMARY\" | xsel -ib", NULL};
 static const char *clearselectionscmd[]  = {"sh", "-c", "xsel -cp; xsel -cb; xsel -cs", NULL};
@@ -144,6 +146,8 @@ static Key keys[] = {
 	{ MODKEY,                       XK_a,      spawn,          {.v = clipmenucmd}},
 	{ MODKEY,                       XK_s,      spawn,          {.v = actprimarycmd}},
 	{ MODKEY|ShiftMask,             XK_s,      spawn,          {.v = actclipboardcmd}},
+	{ MODKEY|ControlMask,           XK_s,      spawn,          {.v = altactprimarycmd}},
+	{ MODKEY|ControlMask|ShiftMask, XK_s,      spawn,          {.v = altactclipboardcmd}},
 	{ MODKEY,                       XK_z,      spawn,          {.v = switchclipboardcmd}},
 	{ MODKEY|ControlMask,           XK_z,      spawn,          {.v = switchselectionscmd}},
 	{ MODKEY|ShiftMask,             XK_z,      spawn,          {.v = clearselectionscmd}},
