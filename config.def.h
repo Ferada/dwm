@@ -20,13 +20,20 @@ static const char *alsa_selem_name  = "Master";
 static const char *tags[] = { "一", "二", "三", "四", "五", "六", "七", "八", "九" };
 
 static const Rule rules[] = {
-	/* class      instance    title       tags mask     isfloating   monitor */
-	{ "Gimp",     NULL,       NULL,       1 << 5,       0,           -1 },
-	{ "Firefox",  NULL,       NULL,       1 << 1,       0,           -1 },
-	{ "feh",      NULL,       NULL,       0,            1,           -1 },
-	{ "MPlayer",  NULL,       NULL,       0,            1,           -1 },
-	{ "mplayer2", NULL,       NULL,       0,            1,           -1 },
-	{ "mpv",      NULL,       NULL,       0,            1,           -1 },
+	/* class               instance    title       tags mask     isfloating   monitor */
+	{ "Firefox",           NULL,       NULL,       1 << 1,       0,           0 },
+	{ "Chromium",          NULL,       NULL,       1 << 1,       0,           1 },
+	{ "Emacs",             NULL,       NULL,       1 << 2,       0,           0 },
+	{ "Code",              NULL,       NULL,       1 << 3,       0,           0 },
+	{ "jetbrains-idea-ce", NULL,       NULL,       1 << 4,       0,           0 },
+	{ "Gimp",              NULL,       NULL,       1 << 5,       0,           0 },
+	{ "KeePass2",          NULL,       NULL,       1 << 7,       0,           0 },
+	{ "Steam",             NULL,       NULL,       1 << 8,       0,           0 },
+
+	{ "feh",               NULL,       NULL,       0,            1,           -1 },
+	{ "MPlayer",           NULL,       NULL,       0,            1,           -1 },
+	{ "mplayer2",          NULL,       NULL,       0,            1,           -1 },
+	{ "mpv",               NULL,       NULL,       0,            1,           -1 },
 };
 
 /* layout(s) */
